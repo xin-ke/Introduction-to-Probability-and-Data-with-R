@@ -6,7 +6,6 @@ output:
     highlight: pygments
     theme: spacelab
 ---
-
 ## Setup
 
 ### Load packages
@@ -14,45 +13,76 @@ output:
 ```{r load-packages, message = FALSE}
 library(ggplot2)
 library(dplyr)
+library(ggrepel)
 ```
 
 ### Load data
-
-Make sure your data and R Markdown files are in the same directory. When loaded
-your data file will be called `brfss2013`. Delete this note when before you submit 
-your work. 
 
 ```{r load-data}
 load("brfss2013.RData")
 ```
 
 
-
 * * *
 
 ## Part 1: Data
+**The observations in the sample are collected from randomly selected people who are over the age of 18 and live in the United States via either a landline telephone or cellphone call. Since the data is collected from a random sample the findings are generalizeable to the adult population residing in the United States who have access to a landline or cellphone. Causality cannot be determined as there is no random assignment used.**
 
 
 * * *
 
 ## Part 2: Research questions
 
-**Research quesion 1:**
+**Research question 1: After controlling for the presence of medical insurance, are there regional differences in time elapsed since last routine checkup? ** 
 
-**Research quesion 2:**
+**Research question 2:**
 
-**Research quesion 3:**
+**Research question 3:**
 
 
 * * *
 
 ## Part 3: Exploratory data analysis
 
-NOTE: Insert code chunks as needed by clicking on the "Insert a new code chunk" 
-button (green button with orange arrow) above. Make sure that your code is visible
-in the project you submit. Delete this note when before you submit your work.
 
-**Research quesion 1:**
+**Research question 1:**
+
+```{r}
+insurance_exams <- brfss2013 %>%
+  filter(!is.na(checkup1) & !is.na(hlthpln1)) %>%
+  group_by(hlthpln1, X_state, checkup1) %>%
+  summarise(count = n())
+
+insured_by_state <- insurance_exams %>% 
+  group_by(X_state, hlthpln1) %>%
+  summarise(num_insured = sum(count))
+
+percentage_insured <- insured_by_state %>%
+  group_by(X_state) %>%
+  mutate(percent_insured = prop.table(num_insured) * 100) %>%
+  filter(hlthpln1 == "Yes")
+
+exams_by_state <- insurance_exams %>%
+  group_by(X_state, checkup1) %>%
+  mutate(checkup_recently = ifelse(checkup1 == "Within past year" | checkup1 == "Within past 2 years", "yes", "no")) %>%
+  group_by(X_state, checkup_recently) %>%
+  summarise(sum_recent_exam = sum(count))
+
+percentage_exam <- exams_by_state %>%
+  group_by(X_state) %>%
+  mutate(percent_exam = prop.table(sum_recent_exam) * 100) %>%
+  filter(checkup_recently == "yes")
+
+state_percentages <- merge(percentage_exam, percentage_insured, by = "X_state")
+  
+ggplot(state_percentages, aes(x = percent_insured, y = percent_exam, label = X_state)) + geom_point(color = "green") + geom_text_repel(aes(label = X_state),
+                 point.padding = NA,
+                 size = 2.5)
+```
+
+
+
+**Research question 2:**
 
 ```{r}
 
@@ -60,15 +90,7 @@ in the project you submit. Delete this note when before you submit your work.
 
 
 
-**Research quesion 2:**
-
-```{r}
-
-```
-
-
-
-**Research quesion 3:**
+**Research question 3:**
 
 ```{r}
 
