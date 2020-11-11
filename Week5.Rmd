@@ -36,7 +36,7 @@ load("brfss2013.RData")
 
 **Research question 1: After controlling for the presence of medical insurance, are there regional differences in the percentage of the populace who have received a wellness checkup within the last 2 years? ** 
 
-**Research question 2:**
+**Research question 2: Does the self-reported physical health of the population vary by region?**
 
 **Research question 3:**
 
@@ -98,7 +98,37 @@ ggplot(yes_percentages, aes(x = percent_insured, y = percent_exam, label = X_sta
 **Research question 2:**
 
 ```{r}
+phys_hlth_ins <-brfss2013 %>%
+  filter(!is.na(physhlth) & !is.na(hlthpln1) & !is.na(checkup1)) %>%
+  mutate(checkup_recently = ifelse(checkup1 == "Within past year" | checkup1 == "Within past 2 years", "yes", "no"))
 
+
+phys_health <- phys_hlth_ins %>%
+  group_by(physhlth) %>%
+  summarise(count = n())
+
+ggplot(phys_health, aes(x = physhlth, y = count)) + 
+    geom_bar(stat = "identity", width = 0.75) 
+
+bad_health <- phys_health %>%
+  filter(physhlth != 0)
+
+ggplot(bad_health, aes(x = physhlth, y = count)) +
+  geom_bar(stat = "identity", width = 0.75)
+
+phys_ins_counts <- phys_hlth_ins %>% 
+  group_by(hlthpln1, physhlth) %>%
+  summarise(count = n())
+
+phys_hlth_ins %>%
+  filter(physhlth != 0) %>%
+  ggplot(aes(x = hlthpln1, y = physhlth)) +
+  geom_violin()
+
+phys_hlth_ins %>%
+  filter(physhlth != 0) %>%
+  ggplot(aes(x = checkup_recently, y = physhlth)) +
+  geom_violin()
 ```
 
 
