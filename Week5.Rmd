@@ -28,18 +28,18 @@ load("brfss2013.RData")
 * * *
 
 ## Part 1: Data
-**The observations in the sample are collected from randomly selected people who are over the age of 18 and live in the United States via either a landline telephone or cellphone call. Since the data is collected from a random sample the findings are generalizeable to the adult population residing in the United States who have access to a landline or cellphone. Causality cannot be determined as there is no random assignment used.**
+**The observations in the sample are collected from randomly selected people who are over the age of 18 and live in the United States via either a landline telephone or cellphone call. Since the data is collected from a random sample the findings are generalizable to the adult population residing in the United States who have access to a landline or cellphone. Causality cannot be determined as there is no random assignment used.**
 
 
 * * *
 
 ## Part 2: Research questions
 
-**Research question 1: After controlling for the presence of medical insurance, are there regional differences in the percentage of the populace who have received a wellness checkup within the last 2 years?** 
+**Research question 1:** After controlling for the presence of medical insurance, are there regional differences in the percentage of the populace who have received a wellness checkup within the last 2 years?
 
-**Research question 2: Does the self-reported physical health of the population vary by region?**
+**Research question 2:** Does the self-reported physical health of the population vary by region?
 
-**Research question 3: Is there a difference in the average number of poor physical health days experienced by people of different income levels? Does this vary with insurance coverage?**
+**Research question 3:** Is there a difference in the average number of poor physical health days experienced by people of different income levels? Does this vary with insurance coverage?
 
 
 * * *
@@ -54,15 +54,6 @@ insurance_exams <- brfss2013 %>%
   filter(!is.na(checkup1) & !is.na(hlthpln1)) %>%
   group_by(hlthpln1, X_state, checkup1) %>%
   summarise(count = n())
-
-insured_by_state <- insurance_exams %>% 
-  group_by(X_state, hlthpln1) %>%
-  summarise(num_insured = sum(count))
-
-percentage_insured <- insured_by_state %>%
-  group_by(X_state) %>%
-  mutate(percent_insured = prop.table(num_insured) * 100) %>%
-  filter(hlthpln1 == "Yes")
 
 exams_by_state <- insurance_exams %>%
   group_by(X_state, checkup1) %>%
@@ -80,21 +71,49 @@ ungroup(percentage_exam) %>%
   ggplot( aes(x = X_state, y = percent_exam, fill = percent_exam)) + 
     geom_bar(stat = "identity", width = 0.5) + 
     coord_flip() +
-    theme_minimal()
+    theme_minimal() +
+    labs(title = "Population Percentage with Wellness Exam within Past 2 Years by State",
+         fill = "Percentage",
+         x = "Percentage",
+         y = "State")
+```
 
+There does appear to be some variation in the percentage of the population of each state that has received a wellness exam within the last 2 years. The highest percentage which is in Massachusetts is almost 93% while the lowest which is in Alaska is just below 75%.
+
+```{r}
 ggplot(percentage_exam, aes(x = percent_exam)) +
   geom_boxplot() +
-  geom_dotplot(stackdir = 'center', binwidth = 1, method = "histodot")
+  geom_dotplot(stackdir = 'center', binwidth = 1, method = "histodot", dotsize = 0.5, fill = "grey") +
+  labs(title = "Distribution of Population Percentages Above",
+       x = "Percentage") +
+  theme(axis.title.y =  element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```
+
+The median percentage of the population of a given state that has had a wellness exam within 2 years is about 86% and there are no outliers.
+
+```{r}  
+insured_by_state <- insurance_exams %>% 
+  group_by(X_state, hlthpln1) %>%
+  summarise(num_insured = sum(count))
+
+percentage_insured <- insured_by_state %>%
+  group_by(X_state) %>%
+  mutate(percent_insured = prop.table(num_insured) * 100) %>%
+  filter(hlthpln1 == "Yes")
 
 yes_percentages <- merge(percentage_exam, percentage_insured, by = "X_state")
 
-ggplot(yes_percentages, aes(x = percent_insured, y = percent_exam, label = X_state)) + geom_point(color = "green") + geom_text_repel(aes(label = X_state),
+ggplot(yes_percentages, aes(x = percent_insured, y = percent_exam, label = X_state)) + geom_point(color = "darkgrey") +   geom_text_repel(aes(label = X_state),
                  point.padding = NA,
-                 size = 2.5)
-
+                 size = 2.5) +
+  labs(title = "Percentage of Population with Recent Checkup vs Percent with Insurance",
+       x = "Percent of State Population with Health Insurance",
+       y = "Percent of State Population with Checkup in Past 2 Years")
 ```
 
-
+There is a positive correlation between the percentage of the population of a given state with health insurance and the percentage of that population that has had a checkup within the past 2 years. However, the scatter along the y-axis suggests that there are regional differences in the percentage of the population that has had a wellness exam recently. For example, Alaska has much lower rates than other states with comparable levels of health insurance coverage.
 
 **Research question 2:**
 
@@ -108,14 +127,28 @@ phys_health <- phys_hlth_ins %>%
   summarise(count = n())
 
 ggplot(phys_health, aes(x = physhlth, y = count)) + 
-    geom_bar(stat = "identity", width = 0.75) 
+  geom_bar(stat = "identity", width = 0.75) +
+  labs(title = "Number of Days Physical Health was Not Good in a Sample",
+       x = "Number of Days",
+       y = "Sample Population")
+```
 
+The majority of respondents had 0 days of poor physical health in the 30 prior. What does the distribution of the surveyed who had at least one day of poor physical health look like?
+
+```{r}
 bad_health <- phys_health %>%
   filter(physhlth != 0)
 
 ggplot(bad_health, aes(x = physhlth, y = count)) +
-  geom_bar(stat = "identity", width = 0.75)
+  geom_bar(stat = "identity", width = 0.75) +
+  labs(title = "Number of People with >0 Days of Poor Physical Health",
+       x = "Number of Days",
+       y = "Sample Population")
+```
 
+There are spikes in the data at multiples of 5 and 7, which makes sense given that people are likely to estimate the number of days they felt poorly by approximating it as multiples of a week if it was more than a few days. Without the peak at 30, the data is right skewed. 
+
+```{r}
 phys_ins_ordered <- phys_hlth_ins %>% 
   filter(physhlth != 0) %>%
   mutate(checkup_recently = fct_relevel(checkup_recently, "Yes", "No"))
@@ -123,28 +156,67 @@ phys_ins_ordered <- phys_hlth_ins %>%
 ins_violin <- ggplot(phys_ins_ordered, aes(x = hlthpln1, y = physhlth)) 
 
 ins_violin <- ins_violin +
-  geom_violin(aes(alpha = .7, color = "#00bfc4"))
+  geom_violin(aes(color = "red"), fill = NA)
 
 ins_hlth_violin <- ins_violin + 
-  geom_violin(aes(x = checkup_recently, alpha = .3, color = "#f8766d"))
+  geom_violin(aes(x = checkup_recently, color = "blue"), fill = NA)
 
-ins_hlth_violin
+ins_hlth_violin +
+  labs(title = "Distribution of Physical Health of Respondents by Insurance/Checkup Status",
+       x = "Response",
+       y = "Number of Poor Physical Health Days",
+       color = NULL) +
+  scale_color_hue(labels = c("Insurance", "Checkup Recently"))
+```
 
+The overlaid population distributions look quite similar, with peaks at the same multiples that we had noticed above. For respondents who do not have insurance, whether or not they have had a recent checkup seems to be correlated with the number of days they felt poorly in the past month.  
+
+```{r}
 avg_phys_hlth <- phys_hlth_ins %>%
   group_by(X_state) %>%
   summarise(mean(physhlth)) %>%
   rename(state = X_state)
 
 plot_usmap(data = avg_phys_hlth, values = "mean(physhlth)") +
-  scale_fill_continuous(low = "white", high = "red", name = "Average Number of Poor Physical Health Days") +
-  theme(legend.position = "right")
+  scale_fill_continuous(low = "white", high = "red", name = "Average Number of Days") +
+  theme(legend.position = "right") +
+  labs(title = "Number of Days Residents had Poor Physical Health in the Past Month")
 ```
 
-
+Alabama, Tennessee, Kentucky, and West Virginia seem to have the highest average number of days where their residents felt physically unwell. Overall, the northern US seems to have lower averages than the southern regions. 
 
 **Research question 3:**
 
 ```{r}
+income_hlth_ins <- brfss2013 %>%
+  filter(!is.na(physhlth) & !is.na(hlthpln1) & !is.na(income2)) 
 
+avg_hlth_by_income <- income_hlth_ins %>%
+  group_by(income2) %>%
+  summarise(avg_hlth = mean(physhlth))
+
+ggplot(avg_hlth_by_income, aes(x = income2, y = avg_hlth)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "Average Number of Physically Unwell Days by Income Level",
+       x = "Household Income",
+       y = "Average Number of Days")
 ```
 
+The average number of days that respondents felt unwell seems to decrease with higher levels of household income. This could be due to a variety of factors such as the increasing difficulty of maintaining a well-paying job as physical health declines or perhaps access to care is improved for those with higher household incomes. 
+
+```{r}
+avg_hlth_inc_ins <- income_hlth_ins %>%
+  group_by(income2, hlthpln1) %>%
+  summarise(avg_hlth = mean(physhlth))
+
+ggplot(avg_hlth_inc_ins, aes(x = income2, y = avg_hlth, fill = hlthpln1)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "Average Number of Physically Unwell Days by Income Level",
+       x = "Household Income",
+       y = "Average Number of Days",
+       fill = "Insurance Status")
+```
+
+Though the distributions are similarly shaped, the only income bracket for which the average number of days feeling physically unwell was higher for the uninsured group than the insured group was for households with an income of $75,000 or more. 
