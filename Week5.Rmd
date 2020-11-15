@@ -15,6 +15,7 @@ library(ggplot2)
 library(dplyr)
 library(ggrepel)
 library(forcats)
+library(usmap)
 ```
 
 ### Load data
@@ -34,11 +35,11 @@ load("brfss2013.RData")
 
 ## Part 2: Research questions
 
-**Research question 1: After controlling for the presence of medical insurance, are there regional differences in the percentage of the populace who have received a wellness checkup within the last 2 years? ** 
+**Research question 1: After controlling for the presence of medical insurance, are there regional differences in the percentage of the populace who have received a wellness checkup within the last 2 years?** 
 
 **Research question 2: Does the self-reported physical health of the population vary by region?**
 
-**Research question 3:**
+**Research question 3: Is there a difference in the average number of poor physical health days experienced by people of different income levels? Does this vary with insurance coverage?**
 
 
 * * *
@@ -100,8 +101,7 @@ ggplot(yes_percentages, aes(x = percent_insured, y = percent_exam, label = X_sta
 ```{r}
 phys_hlth_ins <-brfss2013 %>%
   filter(!is.na(physhlth) & !is.na(hlthpln1) & !is.na(checkup1)) %>%
-  mutate(checkup_recently = ifelse(checkup1 == "Within past year" | checkup1 == "Within past 2 years", "yes", "no"))
-
+  mutate(checkup_recently = ifelse(checkup1 == "Within past year" | checkup1 == "Within past 2 years", "Yes", "No"))
 
 phys_health <- phys_hlth_ins %>%
   group_by(physhlth) %>%
@@ -116,19 +116,28 @@ bad_health <- phys_health %>%
 ggplot(bad_health, aes(x = physhlth, y = count)) +
   geom_bar(stat = "identity", width = 0.75)
 
-phys_ins_counts <- phys_hlth_ins %>% 
-  group_by(hlthpln1, physhlth) %>%
-  summarise(count = n())
-
-phys_hlth_ins %>%
+phys_ins_ordered <- phys_hlth_ins %>% 
   filter(physhlth != 0) %>%
-  ggplot(aes(x = hlthpln1, y = physhlth)) +
-  geom_violin()
+  mutate(checkup_recently = fct_relevel(checkup_recently, "Yes", "No"))
 
-phys_hlth_ins %>%
-  filter(physhlth != 0) %>%
-  ggplot(aes(x = checkup_recently, y = physhlth)) +
-  geom_violin()
+ins_violin <- ggplot(phys_ins_ordered, aes(x = hlthpln1, y = physhlth)) 
+
+ins_violin <- ins_violin +
+  geom_violin(aes(alpha = .7, color = "#00bfc4"))
+
+ins_hlth_violin <- ins_violin + 
+  geom_violin(aes(x = checkup_recently, alpha = .3, color = "#f8766d"))
+
+ins_hlth_violin
+
+avg_phys_hlth <- phys_hlth_ins %>%
+  group_by(X_state) %>%
+  summarise(mean(physhlth)) %>%
+  rename(state = X_state)
+
+plot_usmap(data = avg_phys_hlth, values = "mean(physhlth)") +
+  scale_fill_continuous(low = "white", high = "red", name = "Average Number of Poor Physical Health Days") +
+  theme(legend.position = "right")
 ```
 
 
